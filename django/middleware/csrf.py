@@ -8,12 +8,12 @@ from __future__ import unicode_literals
 
 import logging
 import re
-
+from urllib.parse import urlparse
 from django.conf import settings
 from django.core.urlresolvers import get_callable
 from django.utils.cache import patch_vary_headers
 from django.utils.encoding import force_text
-from django.utils.http import same_origin
+from django.utils.http import same_origin, is_same_domain
 from django.utils.crypto import constant_time_compare, get_random_string
 
 
@@ -151,11 +151,17 @@ class CsrfViewMiddleware(object):
                 referer = request.META.get('HTTP_REFERER')
                 if referer is None:
                     return self._reject(request, REASON_NO_REFERER)
-
+                referer = urlparse(referer)
                 # Note that request.get_host() includes the port.
                 good_referer = 'https://%s/' % request.get_host()
-                if not same_origin(referer, good_referer):
-                    reason = REASON_BAD_REFERER % (referer, good_referer)
+                # Create a list of all acceptable HTTP referers, including the
+                # current host if it's permitted by ALLOWED_HOSTS.
+                good_hosts = list(settings.CSRF_TRUSTED_ORIGINS)
+                if good_referer is not None:
+                    good_hosts.append(good_referer)
+
+                if not any(is_same_domain(referer.netloc, host) for host in good_hosts):
+                    reason = REASON_BAD_REFERER % (referer.netloc, good_referer)
                     return self._reject(request, reason)
 
             if csrf_token is None:
