@@ -8,7 +8,7 @@ from __future__ import unicode_literals
 
 import logging
 import re
-from urllib.parse import urlparse
+from urlparse import urlparse
 from django.conf import settings
 from django.core.urlresolvers import get_callable
 from django.utils.cache import patch_vary_headers
